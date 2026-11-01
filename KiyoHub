@@ -1,4 +1,4 @@
--- Roblox Delta Script - KIYO HUB (WindUI Edition - Fixed Lag Bug)
+-- Roblox Delta Script - KIYO HUB (WindUI Edition - Ultimate Performance Fix)
 -- Designed & Optimized for Mobile Executing with WindUI Library Integration
 
 local Players = game:GetService("Players")
@@ -33,6 +33,7 @@ local State = {
     AutoClickActive = false,
     AutoClickPoint = Vector2.new(0, 0),
     SafeSpot = false,
+    SafeSpotCount = 3,
     SafeSpots = {},
     FullBright = false,
     Spin = false,
@@ -312,13 +313,14 @@ local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footag
 
 local Window = WindUI:CreateWindow({
     Title = "Kiyo Hub",
-    Icon = "rbxassetid://4483362458",
+    Icon = "rbxassetid://11778372908",
     Author = "by Delta Optimized",
     Folder = "KiyoHubConfig",
     Size = UDim2.fromOffset(580, 460),
     Theme = "Dark",
     Transparent = true,
     Acrylic = false,
+    Background ="rbxassetid://137277385674587" 
 })
 
 local MainTab = Window:Tab({ Title = "Main", Icon = "rbxassetid://4483362458" })
@@ -410,14 +412,32 @@ SafeSpotContainer.Name = "SafeSpotContainer"
 local function updateSafeSpotButtons()
     SafeSpotContainer:ClearAllChildren()
     if not State.SafeSpot then return end
-    for i = 1, 3 do
+    
+    local count = State.SafeSpotCount or 3
+    for i = 1, count do
         local btn = Instance.new("TextButton", SafeSpotContainer)
-        btn.Size, btn.Position = UDim2.new(0, 38, 0, 38), UDim2.new(0.85, 0, 0.81 + ((i - 1) * 0.07), 0)
-        btn.BackgroundColor3, btn.Text, btn.Font, btn.TextColor3, btn.TextSize = Color3.fromRGB(30, 35, 45), "S" .. i, Enum.Font.GothamBold, Color3.fromRGB(220, 230, 242), 10
-        btn.Active, btn.Draggable = true, true
+        btn.Size = UDim2.new(0, 38, 0, 38)
+        btn.Position = UDim2.new(0.35 + ((i - 1) * 0.045), 0, 0.05, 0)
+        
+        btn.BackgroundColor3 = Color3.fromRGB(30, 35, 45)
+        btn.Text = "S" .. i
+        btn.Font = Enum.Font.GothamBold
+        btn.TextColor3 = Color3.fromRGB(220, 230, 242)
+        btn.TextSize = 10
+        btn.Active = true
+        btn.Draggable = true
+        
         Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
         local stroke = Instance.new("UIStroke", btn)
-        stroke.Color, stroke.Thickness = Color3.fromRGB(60, 75, 95), 1
+        stroke.Color = Color3.fromRGB(60, 75, 95)
+        stroke.Thickness = 1
+
+        if State.SafeSpots[i] then
+            btn.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            stroke.Color = Color3.fromRGB(0, 170, 255)
+            btn.Text = "TP" .. i
+        end
 
         btn.MouseButton1Click:Connect(function()
             local char = LocalPlayer.Character
@@ -425,7 +445,10 @@ local function updateSafeSpotButtons()
                 local hrp = char.HumanoidRootPart
                 if not State.SafeSpots[i] then
                     State.SafeSpots[i] = hrp.CFrame
-                    btn.BackgroundColor3, btn.TextColor3, stroke.Color, btn.Text = Color3.fromRGB(0, 120, 215), Color3.fromRGB(255, 255, 255), Color3.fromRGB(0, 170, 255), "TP" .. i
+                    btn.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+                    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    stroke.Color = Color3.fromRGB(0, 170, 255)
+                    btn.Text = "TP" .. i
                 else
                     hrp.CFrame = State.SafeSpots[i]
                 end
@@ -529,9 +552,23 @@ local function applyXRay(enable)
         if enable then
             OriginalXRayTransparency = {}
             for _, part in pairs(workspace:GetDescendants()) do
-                if part:IsA("BasePart") and not part:IsDescendantOf(LocalPlayer.Character) then
-                    OriginalXRayTransparency[part] = part.LocalTransparencyModifier
-                    part.LocalTransparencyModifier = 0.9
+                if part:IsA("BasePart") then
+                    local isPlayerPart = false
+                    if LocalPlayer.Character and part:IsDescendantOf(LocalPlayer.Character) then
+                        isPlayerPart = true
+                    else
+                        for _, p in pairs(Players:GetPlayers()) do
+                            if p.Character and part:IsDescendantOf(p.Character) then
+                                isPlayerPart = true
+                                break
+                            end
+                        end
+                    end
+                    
+                    if not isPlayerPart then
+                        OriginalXRayTransparency[part] = part.LocalTransparencyModifier
+                        part.LocalTransparencyModifier = 0.9
+                    end
                 end
             end
         else
@@ -624,7 +661,34 @@ VisualTab:Dropdown({ Title = "Sky Box", Values = {"Default", "Sunset", "Night"},
 end })
 
 TeleportTab:Toggle({ Title = "Click Teleport", Default = false, Callback = function(Value) State.ClickTP = Value SubTPBtn.Visible = Value if not Value then State.ClickTPActive = false SubTPBtn.BackgroundColor3 = Color3.fromRGB(30, 35, 45) SubTPBtn.TextColor3 = Color3.fromRGB(220, 230, 242) SubTPStroke.Color = Color3.fromRGB(60, 75, 95) end end })
-TeleportTab:Toggle({ Title = "Safe Spot", Default = false, Callback = function(Value) State.SafeSpot = Value if not Value then State.SafeSpots = {} end updateSafeSpotButtons() end })
+
+TeleportTab:Toggle({ 
+    Title = "Safe Spot", 
+    Default = false, 
+    Callback = function(Value) 
+        State.SafeSpot = Value 
+        if not Value then 
+            State.SafeSpots = {} 
+        end 
+        updateSafeSpotButtons() 
+    end 
+})
+
+TeleportTab:Input({ 
+    Title = "Safe Spot Count", 
+    Default = "3", 
+    Placeholder = "3", 
+    Callback = function(Text) 
+        local val = tonumber(Text) 
+        if val and val > 0 then 
+            State.SafeSpotCount = math.clamp(val, 1, 10)
+            if State.SafeSpot then
+                updateSafeSpotButtons()
+            end
+        end 
+    end 
+})
+
 TeleportTab:Toggle({ Title = "Auto Click", Default = false, Callback = function(Value) State.AutoClick = Value SubAutoClickBtn.Visible = Value if not Value then State.AutoClickActive = false State.AutoClickSelecting = false SubAutoClickBtn.BackgroundColor3 = Color3.fromRGB(30, 35, 45) SubAutoClickBtn.TextColor3 = Color3.fromRGB(220, 230, 242) SubAutoClickStroke.Color = Color3.fromRGB(60, 75, 95) end end })
 TeleportTab:Toggle({ Title = "Fake Lag", Default = false, Callback = function(Value) State.FakeLag = Value SubFakeLagBtn.Visible = Value if not Value then State.FakeLagActive = false SubFakeLagBtn.BackgroundColor3 = Color3.fromRGB(30, 35, 45) SubFakeLagBtn.TextColor3 = Color3.fromRGB(220, 230, 242) SubFakeLagStroke.Color = Color3.fromRGB(60, 75, 95) end end })
 TeleportTab:Toggle({ Title = "Time Rewind", Default = false, Callback = function(Value) State.TimeRewind = Value SubRewindBtn.Visible = Value if not Value then State.TimeRewindActive = false SubRewindBtn.BackgroundColor3 = Color3.fromRGB(30, 35, 45) SubRewindBtn.TextColor3 = Color3.fromRGB(220, 230, 242) SubRewindStroke.Color = Color3.fromRGB(60, 75, 95) end end })
@@ -658,13 +722,17 @@ TeleportTab:Toggle({ Title = "Fast Reset Button", Default = false, Callback = fu
 TeleportTab:Input({ Title = "Gravity", Default = "196.2", Placeholder = "196.2", Callback = function(Text) local val = tonumber(Text) if val then State.Gravity = val Workspace.Gravity = val end end })
 TeleportTab:Input({ Title = "FOV (1-120)", Default = "70", Placeholder = "70", Callback = function(Text) local val = tonumber(Text) if val then State.FOV = math.clamp(val, 1, 120) end end })
 
-local spectateNames = {"None"}
-for _, p in pairs(Players:GetPlayers()) do 
-    if p ~= LocalPlayer then 
-        table.insert(spectateNames, p.DisplayName) 
-    end 
+local function getPlayerList()
+    local list = {"None"}
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            table.insert(list, p.DisplayName)
+        end
+    end
+    return list
 end
 
+local spectateNames = getPlayerList()
 local SpectateDropdown = SpectateTab:Dropdown({ 
     Title = "Select Player to Spectate", 
     Values = spectateNames, 
@@ -706,26 +774,43 @@ SpectateTab:Toggle({
     end
 })
 
-Players.PlayerAdded:Connect(function(plr)
-    if plr ~= LocalPlayer then
-        local currentList = {"None"}
-        for _, p in pairs(Players:GetPlayers()) do 
-            if p ~= LocalPlayer then 
-                table.insert(currentList, p.DisplayName) 
-            end 
+local LoopPeopleDropdown = TeleportTab:Dropdown({ 
+    Title = "Loop People (Target)", 
+    Values = getPlayerList(), 
+    Default = "None", 
+    Callback = function(Option)
+        local displayName = Option
+        if displayName == "None" or not displayName then 
+            State.LoopPeople = false 
+            TargetPlayer = nil
+        else 
+            for _, p in pairs(Players:GetPlayers()) do
+                if p.DisplayName == displayName then
+                    TargetPlayer = p
+                    State.LoopPeople = true
+                    break
+                end
+            end
         end
-        SpectateDropdown:Refresh(currentList)
-    end
-end)
+    end 
+})
 
+local dropdownUpdateConnection = nil
+local function refreshDropdowns()
+    if dropdownUpdateConnection then return end
+    dropdownUpdateConnection = task.defer(function()
+        task.wait(0.3)
+        local currentList = getPlayerList()
+        pcall(function()
+            SpectateDropdown:Refresh(currentList)
+            LoopPeopleDropdown:Refresh(currentList)
+        end)
+        dropdownUpdateConnection = nil
+    end)
+end
+
+Players.PlayerAdded:Connect(refreshDropdowns)
 Players.PlayerRemoving:Connect(function(plr)
-    local currentList = {"None"}
-    for _, p in pairs(Players:GetPlayers()) do 
-        if p ~= LocalPlayer then 
-            table.insert(currentList, p.DisplayName) 
-        end 
-    end
-    SpectateDropdown:Refresh(currentList)
     if SpectateTarget == plr then
         State.SpectateActive = false
         SpectateTarget = nil
@@ -735,55 +820,11 @@ Players.PlayerRemoving:Connect(function(plr)
             end
         end)
     end
-end)
-
-local playerNames = {"None"}
-for _, p in pairs(Players:GetPlayers()) do 
-    if p ~= LocalPlayer then 
-        table.insert(playerNames, p.DisplayName) 
-    end 
-end
-
-local LoopPeopleDropdown = TeleportTab:Dropdown({ Title = "Loop People (Target)", Values = playerNames, Default = "None", Callback = function(Option)
-    local displayName = Option
-    if displayName == "None" or not displayName then 
-        State.LoopPeople = false 
-        TargetPlayer = nil
-    else 
-        for _, p in pairs(Players:GetPlayers()) do
-            if p.DisplayName == displayName then
-                TargetPlayer = p
-                State.LoopPeople = true
-                break
-            end
-        end
-    end
-end })
-
-Players.PlayerAdded:Connect(function(plr)
-    if plr ~= LocalPlayer then
-        local currentList = {"None"}
-        for _, p in pairs(Players:GetPlayers()) do 
-            if p ~= LocalPlayer then 
-                table.insert(currentList, p.DisplayName) 
-            end 
-        end
-        LoopPeopleDropdown:Refresh(currentList)
-    end
-end)
-
-Players.PlayerRemoving:Connect(function(plr)
-    local currentList = {"None"}
-    for _, p in pairs(Players:GetPlayers()) do 
-        if p ~= LocalPlayer then 
-            table.insert(currentList, p.DisplayName) 
-        end 
-    end
-    LoopPeopleDropdown:Refresh(currentList)
     if TargetPlayer == plr then 
         State.LoopPeople = false 
         TargetPlayer = nil 
     end
+    refreshDropdowns()
 end)
 
 ServerTab:Button({ Title = "Rejoin Server", Callback = function() if #Players:GetPlayers() <= 1 then TeleportService:Teleport(game.PlaceId, LocalPlayer) else TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer) end end })
@@ -1107,11 +1148,12 @@ table.insert(Connections, RunService.RenderStepped:Connect(function(delta)
 
     if not State.Aimbot and workspace.CurrentCamera and not State.SpectateActive then workspace.CurrentCamera.FieldOfView = State.FOV end
 
+    -- TỐI ƯU ESP: Dùng bộ đệm (throttle) cách quãng thời gian xa hơn để không bị khựng hình khi player ra/vô
     espUpdateTimer = espUpdateTimer + delta
     if State.ESP then
         hue = (hue + 0.01) % 1
         rainbowColor = Color3.fromHSV(hue, 0.8, 0.9)
-        if espUpdateTimer >= 0.4 then
+        if espUpdateTimer >= 0.8 then
             espUpdateTimer = 0
             task.defer(function()
                 for _, p in pairs(Players:GetPlayers()) do
